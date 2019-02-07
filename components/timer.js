@@ -1,21 +1,30 @@
 import React from 'react';
-import { StyleSheet, Text, Vibration, TextInput, Button, ScrollView, Dimensions} from 'react-native';
+import { 
+	StyleSheet, 
+	Text, 
+	Vibration, 
+	TextInput, 
+	Button, 
+	ScrollView, 
+	Dimensions,
+	View
+} from 'react-native';
+
 import {Constants} from 'expo'
 
-const buttonTitles = {
-	on: "Detener",
-	off: "Iniciar"		
-}
+const timing = [25, 5]
 
 export default class Timer extends React.Component{
 	
 	constructor(props){
 		super(props)
 		this.state = {
-			secs: props.secs?props.secs:"",
+			secs: timing[0] * 60,
 			running: false,
-			buttonTitle: buttonTitles.off,
-			text: this.secsToStr(props.secs)
+			working: true,
+			text: this.secsToStr(timing[0] * 60),
+			workingTime: timing[0],
+			breakTime: timing[1],
 		}
 	}
 
@@ -23,17 +32,36 @@ export default class Timer extends React.Component{
 	render(){
 		return (
 			<ScrollView style={styles.timerContainer} >
-				<TextInput placeholder="segundos" 
+				<View style={styles.inputGroup}>
+					<Text style={styles.timer}>Working time</Text>
+					<TextInput placeholder="minutes" 
 					keyboardType="numeric" 
 					editable={!this.state.running} 
-					autoFocus={!this.state.running} 
-					onChangeText={this.inputTextChange}
-					value={this.state.secs + ""}
+					onChangeText={this.inputWorkingTimeChange}
+					value={this.state.workingTime + ""}
+					style={[styles.contenidoCentrado, styles.timer]}
+					autoFocus={!this.state.running}
+				/>
+				</View>
+				<View style={styles.inputGroup}>
+					<Text style={styles.timer}>Break time</Text>
+					<TextInput placeholder="minutes" 
+					keyboardType="numeric" 
+					editable={!this.state.running} 
+					onChangeText={this.inputBreakTimeChange}
+					value={this.state.breakTime + ""}
 					style={[styles.contenidoCentrado, styles.timer]}
 				/>
-				<Button style={styles.button}
-				 	title={this.state.buttonTitle} 
-				 	onPress={this.btnPressHandler}/>
+				</View>
+				<View style={[styles.inputGroup, styles.btnGroup]}>
+					<Button style={styles.button} title="Start" disabled={this.state.running}
+						onPress={this.startPressHandler}/>
+					<Button style={styles.button} title="Stop" disabled={!this.state.running}
+						onPress={this.stopPressHandler}/>
+					<Button style={styles.button} title="Reset"
+						onPress={this.resetPressHandler}/>
+				</View>
+				
 				<Text style={[styles.timer, styles.contenidoCentrado]}> 
 					{this.state.text}
 				</Text>
@@ -50,46 +78,101 @@ export default class Timer extends React.Component{
 		console.log(this.state.secs);
 		
 		this.setState(prevState => {
-			let secs = prevState.secs - 1
 			return	{
-				secs: secs,
-				buttonTitle: prevState.buttonTitle,
+				secs: (prevState.secs - 1),
+				working: prevState.working,
 				running: prevState.running,
-				text: this.secsToStr(prevState.secs)
+				text: this.secsToStr(prevState.secs),
+				workingTime: prevState.workingTime,
+				breakTime: prevState.breakTime,
 			}
 		})
 		if(this.state.secs < 1){
 			this.stopTimer()
+			this.setState(prevState => {
+				const secs = prevState.working? prevState.breakTime * 60: prevState.workingTime * 60
+				return {
+					secs: secs,
+					working: !prevState.working,
+					running: prevState.running,
+					text: this.secsToStr(secs),
+					workingTime: prevState.workingTime,
+					breakTime: prevState.breakTime,
+				}
+			})
+			this.interval = setInterval(this.inc, 1000)
 		}
 	}
-	inputTextChange = (text) => {
-		let secs = text.replace(/[^\d]/g,"")
+
+	inputBreakTimeChange = (text) => {
 		this.setState((pre) => {
 			return {
-				secs: secs,
+				secs: pre.secs,
 				running: pre.running,
 				buttonTitle: pre.buttonTitle,
-				text: this.secsToStr(secs)
+				text: pre.text,
+				workingTime: pre.workingTime,
+				breakTime: text.replace(/[^\d]/g,""),
 			}
 		})
 	}
 
-	btnPressHandler = () => {
-		let btnState = buttonTitles.on;
-		if(this.state.running){
-			btnState = buttonTitles.off;
-			clearInterval(this.interval)
-		} else {
-			this.interval = setInterval(this.inc, 1000)
-		}
+	inputWorkingTimeChange = (text) => {
+		const t = text.replace(/[^\d]/g,"");
+		const secs = (t? +t:0) * 60
+		this.setState((pre) => {
+			return {
+				secs: secs,
+				running: pre.running,
+				working: true,
+				text: this.secsToStr(secs),
+				workingTime: t,
+				breakTime: pre.breakTime,
+			}
+		})
+	}
+
+	startPressHandler = () => {
 		this.setState(prevState => {
 			return {
 				secs: prevState.secs,
-				buttonTitle: btnState,
-				running: !prevState.running,
-				text: this.secsToStr(prevState.secs)
+				working: prevState.working,
+				running: true,
+				text: prevState.text,
+				workingTime: prevState.workingTime,
+				breakTime: prevState.breakTime,
 			}
 		})
+		this.interval = setInterval(this.inc, 1000)
+		
+	}
+
+
+	stopPressHandler = () => {
+		clearInterval(this.interval)
+		this.setState(prevState => {
+			return {
+				secs: prevState.secs,
+				working: prevState.working,
+				running: false,
+				text: prevState.text,
+				workingTime: prevState.workingTime,
+				breakTime: prevState.breakTime,
+			}
+		})
+	}
+
+	resetPressHandler = () => {
+		clearInterval(this.interval)
+		const secs = timing[0] * 60
+		this.setState(prevState => ({
+			secs: secs,
+			working: true,
+			running: false,
+			text: this.secsToStr(secs),
+			workingTime: timing[0],
+			breakTime: timing[1],
+		}))
 	}
 
 	secsToStr = (secs) => {
@@ -97,10 +180,7 @@ export default class Timer extends React.Component{
 		const s = ss % 60
 		const mm = Math.trunc(ss / 60)
 		const m = mm % 60
-		const hh = Math.trunc(mm / 60)
-		const h = hh % 24
-		const d =Math.trunc(hh / 24)
-		return `${d}d ${h}h ${m}' ${s}"`
+		return `${m}' ${s}"`
 	}
 }
 
@@ -108,21 +188,29 @@ const styles = StyleSheet.create({
   timer: {
     flex: 1,
     fontWeight: 'bold',
-	fontSize: 50
+		fontSize: 30
   },
   timerContainer:{
-	flex: 1,
+		flex: 1,
     fontWeight: 'bold',
-	fontSize: 30,
-	marginTop: Constants.statusBarHeight,
+		fontSize: 30,
+		marginTop: Constants.statusBarHeight,
     alignSelf: "center",
     width: Dimensions.get('window').width
   },
   button: {
-	width: 70,
-	height: 150
+
   },
   contenidoCentrado: {
 	  textAlign: "center"
-  }
+	},
+	inputGroup: {
+		flexDirection: "row",
+		flex: 1,
+		alignItems: "stretch"
+	},
+	btnGroup: {
+		alignContent: "center",
+		justifyContent: "space-between"
+	}
 });
