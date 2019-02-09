@@ -21,7 +21,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingTop: Constants.statusBarHeight,
-    alignSelf: "center",
-    width: Dimensions.get('window').width
+    alignSelf: "center"
   },
 });
